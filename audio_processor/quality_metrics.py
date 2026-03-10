@@ -69,7 +69,11 @@ def compute_quality_report(input_samples, ref_samples, sample_rate):
     # 6. Dynamic range score: penalise over-compression
     dr_diff = dr_results["dynamic_range_diff_db"]
     # Full score if diff > -3 dB, zero at -30 dB
-    dr_score = float(np.clip(100 + (dr_diff / 27 * 100) if dr_diff < -3 else 100, 0, 100))
+    if dr_diff < -3:
+        dr_score_raw = 100 + (dr_diff / 27 * 100)
+    else:
+        dr_score_raw = 100
+    dr_score = float(np.clip(dr_score_raw, 0, 100))
 
     weights = {
         "snr": 0.30,
