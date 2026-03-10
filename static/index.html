@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AudioEQ - Audio Quality Analyzer</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <span class="logo">🎧 AudioEQ</span>
+      <span class="tagline">Audio Quality Analyzer</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Upload Form -->
+    <section class="card upload-card" id="upload-section">
+      <h2>Compare Audio Files</h2>
+      <form id="analyze-form" enctype="multipart/form-data">
+        <div class="file-inputs">
+          <div class="file-group">
+            <label for="input-audio">Input Audio</label>
+            <div class="file-drop-zone" id="drop-input">
+              <input type="file" id="input-audio" name="input_audio"
+                     accept=".wav,.mp3,.flac,.ogg,.aiff,.aif,.m4a" required />
+              <span class="drop-label" id="label-input">Drop file or click to browse<br/>
+                <small>.wav · .mp3 · .flac · .ogg</small></span>
+            </div>
+          </div>
+          <div class="vs-badge">VS</div>
+          <div class="file-group">
+            <label for="reference-audio">Reference Audio</label>
+            <div class="file-drop-zone" id="drop-ref">
+              <input type="file" id="reference-audio" name="reference_audio"
+                     accept=".wav,.mp3,.flac,.ogg,.aiff,.aif,.m4a" required />
+              <span class="drop-label" id="label-ref">Drop file or click to browse<br/>
+                <small>.wav · .mp3 · .flac · .ogg</small></span>
+            </div>
+          </div>
+        </div>
+        <button type="submit" id="analyze-btn" class="btn-primary">
+          <span id="btn-text">Analyze</span>
+          <span id="btn-spinner" class="spinner hidden"></span>
+        </button>
+      </form>
+      <div id="error-box" class="error-box hidden"></div>
+    </section>
+
+    <!-- Results (hidden until analysis completes) -->
+    <section id="results-section" class="hidden">
+
+      <!-- Overall Score -->
+      <div class="card score-card">
+        <div class="score-gauge-wrap">
+          <svg class="score-gauge" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+            <path class="gauge-bg" d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke-width="18"
+                  stroke-linecap="round"/>
+            <path class="gauge-fill" id="gauge-fill" d="M 20 100 A 80 80 0 0 1 180 100"
+                  fill="none" stroke-width="18" stroke-linecap="round"
+                  stroke-dasharray="0 251.2"/>
+            <text class="gauge-text" id="score-text" x="100" y="95" text-anchor="middle">—</text>
+            <text class="gauge-label" x="100" y="115" text-anchor="middle">/ 100</text>
+          </svg>
+        </div>
+        <div class="score-info">
+          <span id="quality-badge" class="quality-badge">—</span>
+          <h3>Overall Quality Score</h3>
+        </div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="card feedback-card">
+        <h3>💡 Recommendations</h3>
+        <ul id="feedback-list"></ul>
+      </div>
+
+      <!-- Metric Cards -->
+      <div class="metrics-grid">
+        <div class="card metric-card">
+          <div class="metric-icon">📶</div>
+          <div class="metric-label">SNR</div>
+          <div class="metric-value" id="m-snr">—</div>
+          <div class="metric-sub" id="m-snr-rating">—</div>
+        </div>
+        <div class="card metric-card">
+          <div class="metric-icon">🎚️</div>
+          <div class="metric-label">Dynamic Range</div>
+          <div class="metric-value" id="m-dr">—</div>
+          <div class="metric-sub" id="m-dr-sub">—</div>
+        </div>
+        <div class="card metric-card">
+          <div class="metric-icon">🔄</div>
+          <div class="metric-label">Phase Coherence</div>
+          <div class="metric-value" id="m-phase">—</div>
+          <div class="metric-sub" id="m-phase-sub">—</div>
+        </div>
+        <div class="card metric-card">
+          <div class="metric-icon">🎵</div>
+          <div class="metric-label">Spectral Similarity</div>
+          <div class="metric-value" id="m-spec">—</div>
+          <div class="metric-sub" id="m-spec-sub">—</div>
+        </div>
+        <div class="card metric-card">
+          <div class="metric-icon">🔗</div>
+          <div class="metric-label">Cross-Correlation</div>
+          <div class="metric-value" id="m-xcorr">—</div>
+          <div class="metric-sub" id="m-xcorr-sub">—</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="card chart-card">
+        <h3>Frequency Spectrum Comparison</h3>
+        <div class="chart-container">
+          <canvas id="freq-chart"></canvas>
+        </div>
+      </div>
+
+      <div class="card chart-card">
+        <h3>Waveform Comparison</h3>
+        <div class="chart-container">
+          <canvas id="wave-chart"></canvas>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <footer>
+    <p>AudioEQ &mdash; Audio Quality Analysis Tool</p>
+  </footer>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
