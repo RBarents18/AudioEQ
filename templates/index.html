@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AudioEQ – Audio Quality Analyzer</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --border:    #2e3148;
+      --accent:    #6c63ff;
+      --accent2:   #00d4aa;
+      --text:      #e2e8f0;
+      --muted:     #94a3b8;
+      --green:     #22c55e;
+      --yellow:    #eab308;
+      --red:       #ef4444;
+      --radius:    12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    header h1 { font-size: 2.2rem; font-weight: 700; letter-spacing: -0.5px; }
+    header h1 span { color: var(--accent); }
+    header p  { color: var(--muted); margin-top: 0.4rem; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .upload-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    @media (max-width: 600px) { .upload-grid { grid-template-columns: 1fr; } }
+
+    .file-input-wrapper label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: var(--muted);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .file-drop {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    .file-drop:hover, .file-drop.dragover {
+      border-color: var(--accent);
+      background: rgba(108,99,255,0.06);
+    }
+    .file-drop input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .file-drop .icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .file-drop .hint { color: var(--muted); font-size: 0.85rem; }
+    .file-drop .filename { color: var(--accent2); font-size: 0.9rem; margin-top: 0.4rem; font-weight: 500; }
+
+    .btn-analyze {
+      display: block;
+      width: 100%;
+      padding: 0.9rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 1rem;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.04em;
+    }
+    .btn-analyze:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+    .btn-analyze:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Spinner */
+    .spinner-wrap {
+      display: none;
+      text-align: center;
+      padding: 2rem;
+    }
+    .spinner-wrap.active { display: block; }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      margin: 0 auto 1rem;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error */
+    .error-box {
+      display: none;
+      background: rgba(239,68,68,0.12);
+      border: 1px solid var(--red);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      color: var(--red);
+      margin-bottom: 1.5rem;
+    }
+    .error-box.active { display: block; }
+
+    /* Results */
+    #results { display: none; }
+    #results.active { display: block; }
+
+    .score-display {
+      text-align: center;
+      padding: 2rem;
+    }
+    .score-display .label {
+      font-size: 0.9rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.5rem;
+    }
+    .score-circle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      border: 5px solid;
+      font-size: 2.6rem;
+      font-weight: 800;
+      margin: 0.5rem auto;
+    }
+    .score-circle.green  { border-color: var(--green);  color: var(--green);  }
+    .score-circle.yellow { border-color: var(--yellow); color: var(--yellow); }
+    .score-circle.red    { border-color: var(--red);    color: var(--red);    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+
+    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; }
+    .chart-card h3 { font-size: 0.95rem; color: var(--muted); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* Metrics table */
+    .metrics-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    .metrics-table th {
+      text-align: left; padding: 0.6rem 0.8rem;
+      color: var(--muted); font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .metrics-table td { padding: 0.65rem 0.8rem; border-bottom: 1px solid rgba(46,49,72,0.5); }
+    .metrics-table tr:last-child td { border-bottom: none; }
+    .metrics-table tr:hover td { background: rgba(108,99,255,0.05); }
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .badge.good  { background: rgba(34,197,94,0.15);  color: var(--green);  }
+    .badge.warn  { background: rgba(234,179,8,0.15);  color: var(--yellow); }
+    .badge.bad   { background: rgba(239,68,68,0.15);  color: var(--red);    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Audio<span>EQ</span></h1>
+  <p>Compare your audio against a studio-quality reference</p>
+</header>
+
+<div style="max-width:900px; margin:0 auto;">
+
+  <div class="card">
+    <div class="upload-grid">
+      <div class="file-input-wrapper">
+        <label>Input Audio</label>
+        <div class="file-drop" id="drop-input">
+          <div class="icon">🎵</div>
+          <div class="hint">Drop file or click to browse<br><small>WAV · MP3 · FLAC · OGG · M4A</small></div>
+          <div class="filename" id="name-input"></div>
+          <input type="file" id="input-file" accept=".wav,.mp3,.flac,.ogg,.m4a" />
+        </div>
+      </div>
+      <div class="file-input-wrapper">
+        <label>Reference Audio</label>
+        <div class="file-drop" id="drop-ref">
+          <div class="icon">⭐</div>
+          <div class="hint">Drop file or click to browse<br><small>WAV · MP3 · FLAC · OGG · M4A</small></div>
+          <div class="filename" id="name-ref"></div>
+          <input type="file" id="ref-file" accept=".wav,.mp3,.flac,.ogg,.m4a" />
+        </div>
+      </div>
+    </div>
+    <button class="btn-analyze" id="analyze-btn" disabled>Analyze Audio</button>
+  </div>
+
+  <div class="error-box" id="error-box"></div>
+
+  <div class="spinner-wrap" id="spinner">
+    <div class="spinner"></div>
+    <p style="color:var(--muted)">Analyzing audio — this may take a moment…</p>
+  </div>
+
+  <div id="results">
+    <div class="card score-display">
+      <div class="label">Overall Quality Score</div>
+      <div class="score-circle" id="score-circle">–</div>
+      <div style="color:var(--muted); margin-top:0.8rem; font-size:0.9rem;" id="score-desc"></div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Waveform (Amplitude)</h3>
+        <canvas id="waveform-chart" height="180"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Frequency Spectrum</h3>
+        <canvas id="freq-chart" height="180"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:1rem; color:var(--muted); font-size:0.9rem; text-transform:uppercase; letter-spacing:0.06em;">Detailed Metrics</h3>
+      <table class="metrics-table" id="metrics-table">
+        <thead><tr><th>Metric</th><th>Value</th><th>Assessment</th></tr></thead>
+        <tbody id="metrics-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── File inputs ──────────────────────────────────────────────────────────
+  const inputFile = document.getElementById('input-file');
+  const refFile   = document.getElementById('ref-file');
+  const analyzeBtn = document.getElementById('analyze-btn');
+
+  function updateFileName(inputEl, nameEl) {
+    inputEl.addEventListener('change', () => {
+      nameEl.textContent = inputEl.files[0]?.name || '';
+      checkReady();
+    });
+  }
+  updateFileName(inputFile, document.getElementById('name-input'));
+  updateFileName(refFile,   document.getElementById('name-ref'));
+
+  function checkReady() {
+    analyzeBtn.disabled = !(inputFile.files[0] && refFile.files[0]);
+  }
+
+  // Drag-over styling
+  ['drop-input','drop-ref'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('dragover'); });
+    el.addEventListener('dragleave', () => el.classList.remove('dragover'));
+    el.addEventListener('drop', () => el.classList.remove('dragover'));
+  });
+
+  // ── Analyze ──────────────────────────────────────────────────────────────
+  let waveChart = null, freqChart = null;
+
+  analyzeBtn.addEventListener('click', async () => {
+    const errorBox = document.getElementById('error-box');
+    const spinner  = document.getElementById('spinner');
+    const results  = document.getElementById('results');
+
+    errorBox.className = 'error-box';
+    results.className  = '';
+    spinner.className  = 'spinner-wrap active';
+    analyzeBtn.disabled = true;
+
+    const form = new FormData();
+    form.append('input',     inputFile.files[0]);
+    form.append('reference', refFile.files[0]);
+
+    try {
+      const resp = await fetch('/api/analyze', { method: 'POST', body: form });
+      const data = await resp.json();
+
+      if (!resp.ok || data.error) {
+        throw new Error(data.error || 'Unknown server error');
+      }
+
+      renderResults(data);
+      results.className = 'active';
+    } catch (err) {
+      errorBox.textContent = '❌ ' + err.message;
+      errorBox.className   = 'error-box active';
+    } finally {
+      spinner.className = 'spinner-wrap';
+      analyzeBtn.disabled = false;
+    }
+  });
+
+  // ── Render ───────────────────────────────────────────────────────────────
+  function downsample(arr, n) {
+    if (arr.length <= n) return arr;
+    const step = arr.length / n;
+    return Array.from({ length: n }, (_, i) => arr[Math.floor(i * step)]);
+  }
+
+  function renderResults(data) {
+    // Score
+    const score = data.overall_quality_score;
+    const circle = document.getElementById('score-circle');
+    circle.textContent = score.toFixed(1);
+    circle.className = 'score-circle ' + (score >= 80 ? 'green' : score >= 60 ? 'yellow' : 'red');
+    document.getElementById('score-desc').textContent =
+      score >= 80 ? '✅ Excellent quality match'
+      : score >= 60 ? '⚠️ Acceptable quality – some differences detected'
+      : '❌ Significant quality issues detected';
+
+    // Waveform chart
+    const freq   = data.frequency_analysis;
+    const sr     = data.sample_rate;
+    const N      = freq.freq_bins.length;
+    const times  = Array.from({ length: N }, (_, i) => (i / N * data.duration_ref_s).toFixed(3));
+    const inMag  = downsample(freq.input_magnitude, 1000);
+    const refMag = downsample(freq.ref_magnitude, 1000);
+    const tLabels = downsample(times, 1000);
+
+    if (waveChart) waveChart.destroy();
+    waveChart = new Chart(document.getElementById('waveform-chart'), {
+      type: 'line',
+      data: {
+        labels: tLabels,
+        datasets: [
+          { label: 'Input',     data: inMag,  borderColor: '#6c63ff', borderWidth: 1.2, pointRadius: 0, tension: 0.3 },
+          { label: 'Reference', data: refMag, borderColor: '#00d4aa', borderWidth: 1.2, pointRadius: 0, tension: 0.3 },
+        ]
+      },
+      options: { animation: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: {
+        x: { ticks: { color: '#94a3b8', maxTicksLimit: 6 }, grid: { color: '#2e3148' } },
+        y: { ticks: { color: '#94a3b8' }, grid: { color: '#2e3148' }, title: { display: true, text: 'dB', color: '#94a3b8' } }
+      }}
+    });
+
+    // Frequency spectrum
+    const freqBins = downsample(freq.freq_bins, 1000);
+    const inMagFreq  = downsample(freq.input_magnitude, 1000);
+    const refMagFreq = downsample(freq.ref_magnitude, 1000);
+
+    if (freqChart) freqChart.destroy();
+    freqChart = new Chart(document.getElementById('freq-chart'), {
+      type: 'line',
+      data: {
+        labels: freqBins.map(f => f.toFixed(0)),
+        datasets: [
+          { label: 'Input',     data: inMagFreq,  borderColor: '#6c63ff', borderWidth: 1.2, pointRadius: 0, tension: 0.2 },
+          { label: 'Reference', data: refMagFreq, borderColor: '#00d4aa', borderWidth: 1.2, pointRadius: 0, tension: 0.2 },
+        ]
+      },
+      options: { animation: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: {
+        x: { ticks: { color: '#94a3b8', maxTicksLimit: 8 }, grid: { color: '#2e3148' }, title: { display: true, text: 'Hz', color: '#94a3b8' } },
+        y: { ticks: { color: '#94a3b8' }, grid: { color: '#2e3148' }, title: { display: true, text: 'dB', color: '#94a3b8' } }
+      }}
+    });
+
+    // Metrics table
+    const td = data.time_domain_analysis;
+    const ph = data.phase_analysis;
+    const sn = data.snr;
+    const dr = data.dynamic_range;
+    const ss = data.spectral_similarity;
+    const xc = data.cross_correlation;
+
+    const rows = [
+      ['SNR',                   sn.snr_db.toFixed(2) + ' dB',           sn.snr_db >= 30 ? 'good' : sn.snr_db >= 15 ? 'warn' : 'bad',   sn.snr_db >= 30 ? 'High' : sn.snr_db >= 15 ? 'Moderate' : 'Low'],
+      ['Noise Floor',           sn.noise_floor_db.toFixed(2) + ' dB',   sn.noise_floor_db < -40 ? 'good' : sn.noise_floor_db < -20 ? 'warn' : 'bad', sn.noise_floor_db < -40 ? 'Low' : 'Elevated'],
+      ['RMS Input',             td.rms_input.toFixed(4),                 'warn', ''],
+      ['RMS Reference',         td.rms_ref.toFixed(4),                   'warn', ''],
+      ['RMS Diff',              td.rms_diff_db.toFixed(2) + ' dB',       Math.abs(td.rms_diff_db) < 3 ? 'good' : Math.abs(td.rms_diff_db) < 6 ? 'warn' : 'bad', Math.abs(td.rms_diff_db) < 3 ? 'Minimal' : 'Notable'],
+      ['Clipping',              td.clipping_detected ? 'Yes' : 'No',     td.clipping_detected ? 'bad' : 'good', td.clipping_detected ? 'Detected' : 'None'],
+      ['Amplitude Ratio',       td.amplitude_ratio.toFixed(4),           Math.abs(td.amplitude_ratio - 1) < 0.05 ? 'good' : Math.abs(td.amplitude_ratio - 1) < 0.2 ? 'warn' : 'bad', ''],
+      ['Cosine Similarity',     ss.cosine_similarity.toFixed(4),         ss.cosine_similarity >= 0.95 ? 'good' : ss.cosine_similarity >= 0.8 ? 'warn' : 'bad', ss.cosine_similarity >= 0.95 ? 'Excellent' : ss.cosine_similarity >= 0.8 ? 'Good' : 'Poor'],
+      ['MFCC Distance',         ss.mfcc_distance.toFixed(4),             ss.mfcc_distance < 10 ? 'good' : ss.mfcc_distance < 30 ? 'warn' : 'bad', ''],
+      ['MFCC Correlation',      ss.mfcc_correlation.toFixed(4),          ss.mfcc_correlation >= 0.9 ? 'good' : ss.mfcc_correlation >= 0.7 ? 'warn' : 'bad', ''],
+      ['Mean Phase Diff',       ph.mean_phase_diff_deg.toFixed(2) + '°', Math.abs(ph.mean_phase_diff_deg) < 10 ? 'good' : Math.abs(ph.mean_phase_diff_deg) < 45 ? 'warn' : 'bad', ''],
+      ['Std Phase Diff',        ph.std_phase_diff_deg.toFixed(2) + '°',  ph.std_phase_diff_deg < 30 ? 'good' : ph.std_phase_diff_deg < 60 ? 'warn' : 'bad', ''],
+      ['Input Dynamic Range',   dr.input_dynamic_range_db.toFixed(2) + ' dB', 'warn', ''],
+      ['Ref Dynamic Range',     dr.ref_dynamic_range_db.toFixed(2) + ' dB',   'warn', ''],
+      ['Crest Factor (Input)',  dr.crest_factor_input.toFixed(2) + ' dB', 'warn', ''],
+      ['Crest Factor (Ref)',    dr.crest_factor_ref.toFixed(2) + ' dB',   'warn', ''],
+      ['Timing Lag',            xc.lag_ms.toFixed(2) + ' ms',            Math.abs(xc.lag_ms) < 5 ? 'good' : Math.abs(xc.lag_ms) < 20 ? 'warn' : 'bad', Math.abs(xc.lag_ms) < 5 ? 'Aligned' : 'Offset'],
+      ['Cross-Correlation',     xc.max_correlation.toFixed(4),            xc.max_correlation >= 0.95 ? 'good' : xc.max_correlation >= 0.8 ? 'warn' : 'bad', ''],
+      ['Input Duration',        data.duration_input_s.toFixed(3) + ' s', 'warn', ''],
+      ['Reference Duration',    data.duration_ref_s.toFixed(3) + ' s',   'warn', ''],
+    ];
+
+    const tbody = document.getElementById('metrics-body');
+    tbody.innerHTML = rows.map(([name, val, cls, desc]) =>
+      `<tr><td>${name}</td><td><strong>${val}</strong></td><td>${desc ? `<span class="badge ${cls}">${desc}</span>` : ''}</td></tr>`
+    ).join('');
+  }
+</script>
+</body>
+</html>
