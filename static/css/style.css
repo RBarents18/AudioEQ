@@ -1,0 +1,304 @@
+/* ─── Reset & Root ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #1a1a2e;
+  --surface:   #16213e;
+  --primary:   #0f3460;
+  --accent:    #e94560;
+  --accent2:   #53d8fb;
+  --text:      #e0e0e0;
+  --text-muted:#8892a4;
+  --border:    #1e3a5f;
+  --shadow:    0 4px 24px rgba(0,0,0,.45);
+  --radius:    12px;
+  --transition:200ms ease;
+  --gauge-arc: 251.2px;   /* circumference of semicircle r=80 * π */
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Header ───────────────────────────────────────────────────────────── */
+header {
+  background: var(--primary);
+  border-bottom: 2px solid var(--accent);
+  padding: 1rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,.5);
+}
+.header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.logo   { font-size: 1.6rem; font-weight: 700; letter-spacing: -.5px; }
+.tagline{ color: var(--text-muted); font-size: .95rem; }
+
+/* ─── Main Layout ──────────────────────────────────────────────────────── */
+main {
+  max-width: 1100px;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ─── Cards ────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.75rem 2rem;
+  box-shadow: var(--shadow);
+}
+
+/* ─── Upload Section ───────────────────────────────────────────────────── */
+.upload-card h2 {
+  margin-bottom: 1.5rem;
+  font-size: 1.3rem;
+  color: var(--accent2);
+}
+
+.file-inputs {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.file-group {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.file-group label {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: .85rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.file-drop-zone {
+  position: relative;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.file-drop-zone:hover,
+.file-drop-zone.dragover {
+  border-color: var(--accent2);
+  background: rgba(83,216,251,.05);
+}
+.file-drop-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+.drop-label {
+  pointer-events: none;
+  color: var(--text-muted);
+  font-size: .9rem;
+  line-height: 1.6;
+}
+.drop-label.has-file { color: var(--accent2); font-weight: 600; }
+.drop-label small { display: block; font-size: .75rem; opacity: .7; }
+
+.vs-badge {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  border-radius: 50%;
+  width: 2.4rem;
+  height: 2.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .9rem;
+  margin-top: 1.5rem;
+}
+
+/* ─── Button ───────────────────────────────────────────────────────────── */
+.btn-primary {
+  margin-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: .75rem 2.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+}
+.btn-primary:hover:not(:disabled) { background: #c93050; transform: translateY(-1px); }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ─── Spinner ──────────────────────────────────────────────────────────── */
+.spinner {
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid rgba(255,255,255,.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Error Box ────────────────────────────────────────────────────────── */
+.error-box {
+  margin-top: 1rem;
+  background: rgba(233,69,96,.12);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: .9rem 1.2rem;
+  color: #ff7a90;
+  font-size: .9rem;
+}
+
+/* ─── Score Card ───────────────────────────────────────────────────────── */
+.score-card {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+  flex-wrap: wrap;
+}
+
+.score-gauge-wrap { flex-shrink: 0; }
+
+.score-gauge {
+  width: 220px;
+  height: 130px;
+  overflow: visible;
+}
+.gauge-bg   { stroke: var(--border); }
+.gauge-fill { stroke: var(--accent2); transition: stroke-dasharray .8s cubic-bezier(.4,0,.2,1); }
+.gauge-text {
+  font-size: 2.2rem;
+  font-weight: 800;
+  fill: var(--text);
+  font-family: inherit;
+}
+.gauge-label {
+  font-size: .85rem;
+  fill: var(--text-muted);
+  font-family: inherit;
+}
+
+.score-info {
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+}
+.score-info h3 { font-size: 1.1rem; color: var(--text-muted); }
+
+.quality-badge {
+  display: inline-block;
+  padding: .35rem 1.1rem;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.badge-excellent { background: rgba(72,199,142,.2);  color: #48c78e; border: 1px solid #48c78e; }
+.badge-good      { background: rgba(83,216,251,.2);  color: var(--accent2); border: 1px solid var(--accent2); }
+.badge-fair      { background: rgba(255,189,0,.2);   color: #ffbd00; border: 1px solid #ffbd00; }
+.badge-poor      { background: rgba(233,69,96,.2);   color: var(--accent); border: 1px solid var(--accent); }
+
+/* ─── Feedback ─────────────────────────────────────────────────────────── */
+.feedback-card h3 {
+  margin-bottom: 1rem;
+  font-size: 1.05rem;
+  color: var(--accent2);
+}
+#feedback-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+#feedback-list li {
+  padding: .6rem .9rem;
+  background: rgba(255,255,255,.04);
+  border-left: 3px solid var(--accent2);
+  border-radius: 0 6px 6px 0;
+  font-size: .9rem;
+  line-height: 1.5;
+}
+
+/* ─── Metric Cards ─────────────────────────────────────────────────────── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 1rem;
+}
+.metric-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .4rem;
+  text-align: center;
+  padding: 1.4rem 1rem;
+}
+.metric-icon  { font-size: 1.8rem; }
+.metric-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); }
+.metric-value { font-size: 1.4rem; font-weight: 700; color: var(--accent2); }
+.metric-sub   { font-size: .8rem; color: var(--text-muted); }
+
+/* ─── Chart Cards ──────────────────────────────────────────────────────── */
+.chart-card h3 {
+  margin-bottom: 1rem;
+  font-size: 1.05rem;
+  color: var(--accent2);
+}
+.chart-container {
+  position: relative;
+  height: 280px;
+}
+
+/* ─── Footer ───────────────────────────────────────────────────────────── */
+footer {
+  text-align: center;
+  padding: 1.2rem;
+  color: var(--text-muted);
+  font-size: .8rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ─── Utilities ────────────────────────────────────────────────────────── */
+.hidden { display: none !important; }
+
+/* ─── Responsive ───────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .score-card { flex-direction: column; align-items: flex-start; }
+  .file-inputs { flex-direction: column; }
+  .vs-badge { align-self: center; margin: 0; }
+}
