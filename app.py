@@ -10,7 +10,7 @@ from audio_processor.quality_metrics import compute_quality_report
 
 ALLOWED_EXTENSIONS = {"wav", "mp3", "flac", "ogg", "aiff", "aif", "m4a"}
 
-app = Flask(__name__, static_folder="static")
+app = Flask(__name__, static_folder="static", static_url_path="")
 app.config["UPLOAD_FOLDER"] = tempfile.gettempdir()
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100 MB
 
