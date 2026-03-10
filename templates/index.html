@@ -243,7 +243,7 @@
 
     <div class="charts-grid">
       <div class="chart-card">
-        <h3>Waveform (Amplitude)</h3>
+        <h3>Frequency Deviation (Input − Reference)</h3>
         <canvas id="waveform-chart" height="180"></canvas>
       </div>
       <div class="chart-card">
@@ -344,27 +344,24 @@
       : score >= 60 ? '⚠️ Acceptable quality – some differences detected'
       : '❌ Significant quality issues detected';
 
-    // Waveform chart
+    // Waveform chart – frequency deviation (input − reference in dB)
     const freq   = data.frequency_analysis;
-    const sr     = data.sample_rate;
-    const N      = freq.freq_bins.length;
-    const times  = Array.from({ length: N }, (_, i) => (i / N * data.duration_ref_s).toFixed(3));
-    const inMag  = downsample(freq.input_magnitude, 1000);
-    const refMag = downsample(freq.ref_magnitude, 1000);
-    const tLabels = downsample(times, 1000);
+    const freqBinsAll = freq.freq_bins;
+    const deviationAll = freq.deviation_db;
+    const devLabels = downsample(freqBinsAll, 1000);
+    const devData   = downsample(deviationAll, 1000);
 
     if (waveChart) waveChart.destroy();
     waveChart = new Chart(document.getElementById('waveform-chart'), {
       type: 'line',
       data: {
-        labels: tLabels,
+        labels: devLabels.map(f => f.toFixed(0)),
         datasets: [
-          { label: 'Input',     data: inMag,  borderColor: '#6c63ff', borderWidth: 1.2, pointRadius: 0, tension: 0.3 },
-          { label: 'Reference', data: refMag, borderColor: '#00d4aa', borderWidth: 1.2, pointRadius: 0, tension: 0.3 },
+          { label: 'Deviation (Input − Ref)', data: devData, borderColor: '#6c63ff', borderWidth: 1.2, pointRadius: 0, tension: 0.3, fill: { target: 'origin', above: 'rgba(108,99,255,0.12)', below: 'rgba(239,68,68,0.12)' } },
         ]
       },
       options: { animation: false, plugins: { legend: { labels: { color: '#94a3b8' } } }, scales: {
-        x: { ticks: { color: '#94a3b8', maxTicksLimit: 6 }, grid: { color: '#2e3148' } },
+        x: { ticks: { color: '#94a3b8', maxTicksLimit: 6 }, grid: { color: '#2e3148' }, title: { display: true, text: 'Hz', color: '#94a3b8' } },
         y: { ticks: { color: '#94a3b8' }, grid: { color: '#2e3148' }, title: { display: true, text: 'dB', color: '#94a3b8' } }
       }}
     });
