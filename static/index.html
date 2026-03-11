@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AudioEQ - Audio Quality Analyzer</title>
   <link rel="stylesheet" href="/css/style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="/js/chart.min.js" defer></script>
 </head>
 <body>
   <header>
@@ -16,21 +16,67 @@
   </header>
 
   <main>
-    <!-- Upload Form -->
+    <!-- Upload / Record Form -->
     <section class="card upload-card" id="upload-section">
       <h2>Compare Audio Files</h2>
       <form id="analyze-form" enctype="multipart/form-data">
         <div class="file-inputs">
+
+          <!-- ── Input Audio (file upload OR live mic recording) ── -->
           <div class="file-group">
-            <label for="input-audio">Input Audio</label>
-            <div class="file-drop-zone" id="drop-input">
-              <input type="file" id="input-audio" name="input_audio"
-                     accept=".wav,.mp3,.flac,.ogg,.aiff,.aif,.m4a" required />
-              <span class="drop-label" id="label-input">Drop file or click to browse<br/>
-                <small>.wav · .mp3 · .flac · .ogg</small></span>
+            <label>Input Audio</label>
+
+            <!-- Mode toggle -->
+            <div class="input-mode-tabs" role="tablist">
+              <button type="button" class="tab-btn tab-active" id="tab-upload"
+                      role="tab" aria-selected="true" aria-controls="panel-upload">
+                📁 Upload File
+              </button>
+              <button type="button" class="tab-btn" id="tab-mic"
+                      role="tab" aria-selected="false" aria-controls="panel-mic">
+                🎙 Record Mic
+              </button>
             </div>
-          </div>
+
+            <!-- Panel: file upload -->
+            <div id="panel-upload" role="tabpanel">
+              <div class="file-drop-zone" id="drop-input">
+                <input type="file" id="input-audio" name="input_audio"
+                       accept=".wav,.mp3,.flac,.ogg,.aiff,.aif,.m4a" required />
+                <span class="drop-label" id="label-input">Drop file or click to browse<br/>
+                  <small>.wav · .mp3 · .flac · .ogg</small></span>
+              </div>
+            </div>
+
+            <!-- Panel: microphone recording -->
+            <div id="panel-mic" class="hidden" role="tabpanel">
+              <div class="mic-panel">
+                <div class="mic-status" id="mic-status">
+                  <span class="mic-dot" id="mic-dot"></span>
+                  <span id="mic-status-text">Ready to record</span>
+                </div>
+                <div class="mic-controls">
+                  <button type="button" id="btn-record-start" class="btn-record">
+                    ⏺ Start Recording
+                  </button>
+                  <button type="button" id="btn-record-stop" class="btn-record btn-stop hidden">
+                    ⏹ Stop Recording
+                  </button>
+                </div>
+                <div id="mic-playback" class="hidden">
+                  <audio id="mic-audio" controls></audio>
+                  <p class="mic-ready-msg">✅ Recording ready — click <strong>Analyze</strong> below</p>
+                </div>
+                <!-- Hidden file input used to carry the recorded WAV into FormData -->
+                <input type="file" id="mic-file-input" name="input_audio"
+                       class="hidden" aria-hidden="true" />
+              </div>
+            </div>
+          </div><!-- /file-group -->
+
           <div class="vs-badge">VS</div>
+
+          <!-- ── Reference Audio (file upload only) ── -->
           <div class="file-group">
             <label for="reference-audio">Reference Audio</label>
             <div class="file-drop-zone" id="drop-ref">
@@ -40,7 +86,8 @@
                 <small>.wav · .mp3 · .flac · .ogg</small></span>
             </div>
           </div>
-        </div>
+        </div><!-- /file-inputs -->
+
         <button type="submit" id="analyze-btn" class="btn-primary">
           <span id="btn-text">Analyze</span>
           <span id="btn-spinner" class="spinner hidden"></span>
@@ -133,6 +180,6 @@
     <p>AudioEQ &mdash; Audio Quality Analysis Tool</p>
   </footer>
 
-  <script src="/js/app.js"></script>
+  <script src="/js/app.js" defer></script>
 </body>
 </html>

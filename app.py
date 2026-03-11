@@ -8,7 +8,7 @@ from werkzeug.utils import secure_filename
 from audio_processor.loader import load_audio, validate_audio
 from audio_processor.quality_metrics import compute_quality_report
 
-ALLOWED_EXTENSIONS = {"wav", "mp3", "flac", "ogg", "aiff", "aif", "m4a"}
+ALLOWED_EXTENSIONS = {"wav", "mp3", "flac", "ogg", "aiff", "aif", "m4a", "webm"}  # webm: browser MediaRecorder fallback
 
 app = Flask(__name__, static_folder="static", static_url_path="")
 app.config["UPLOAD_FOLDER"] = tempfile.gettempdir()

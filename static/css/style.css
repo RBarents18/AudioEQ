@@ -293,7 +293,87 @@ footer {
   border-top: 1px solid var(--border);
 }
 
-/* ─── Utilities ────────────────────────────────────────────────────────── */
+/* ─── Input Mode Tabs ──────────────────────────────────────────────────── */
+.input-mode-tabs {
+  display: flex;
+  gap: .4rem;
+  margin-bottom: .7rem;
+}
+.tab-btn {
+  flex: 1;
+  background: var(--primary);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .45rem .8rem;
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.tab-btn:hover { border-color: var(--accent2); color: var(--text); }
+.tab-btn.tab-active {
+  background: var(--accent2);
+  color: #0f1c2d;
+  border-color: var(--accent2);
+}
+
+/* ─── Mic Panel ────────────────────────────────────────────────────────── */
+.mic-panel {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 1.2rem 1rem;
+}
+.mic-status {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  font-size: .9rem;
+  color: var(--text-muted);
+}
+.mic-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+  transition: background var(--transition);
+}
+.mic-dot.recording {
+  background: #e94560;
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: .4; transform: scale(1.3); }
+}
+.mic-controls {
+  display: flex;
+  gap: .6rem;
+}
+.btn-record {
+  flex: 1;
+  background: var(--primary);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: .55rem 1rem;
+  font-size: .9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+.btn-record:hover:not(:disabled) { background: #1a3a6a; border-color: var(--accent2); }
+.btn-record:disabled { opacity: .45; cursor: not-allowed; }
+.btn-stop { background: rgba(233,69,96,.15); border-color: var(--accent); color: var(--accent); }
+.btn-stop:hover:not(:disabled) { background: rgba(233,69,96,.28); border-color: var(--accent); }
+#mic-playback audio { width: 100%; margin-top: .1rem; }
+.mic-ready-msg { font-size: .82rem; color: #48c78e; margin-top: .3rem; }
+
+
 .hidden { display: none !important; }
 
 /* ─── Responsive ───────────────────────────────────────────────────────── */
