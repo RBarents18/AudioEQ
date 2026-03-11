@@ -15,9 +15,51 @@ const refFileEl   = document.getElementById('reference-audio');
 const labelInput  = document.getElementById('label-input');
 const labelRef    = document.getElementById('label-ref');
 
+// Mic-mode elements
+const tabUpload       = document.getElementById('tab-upload');
+const tabMic          = document.getElementById('tab-mic');
+const panelUpload     = document.getElementById('panel-upload');
+const panelMic        = document.getElementById('panel-mic');
+const btnRecordStart  = document.getElementById('btn-record-start');
+const btnRecordStop   = document.getElementById('btn-record-stop');
+const micDot          = document.getElementById('mic-dot');
+const micStatusText   = document.getElementById('mic-status-text');
+const micPlayback     = document.getElementById('mic-playback');
+const micAudio        = document.getElementById('mic-audio');
+const micFileInput    = document.getElementById('mic-file-input');
+
 // Chart instances (kept so we can destroy & recreate on new analysis)
 let freqChart = null;
 let waveChart = null;
+
+// ── Input-mode state ───────────────────────────────────────────────────────
+let micMode = false;           // true → use mic recording as input_audio
+let recordedWavFile = null;    // File object set after recording stops
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+tabUpload.addEventListener('click', () => {
+  micMode = false;
+  tabUpload.classList.add('tab-active');
+  tabUpload.setAttribute('aria-selected', 'true');
+  tabMic.classList.remove('tab-active');
+  tabMic.setAttribute('aria-selected', 'false');
+  panelUpload.classList.remove('hidden');
+  panelMic.classList.add('hidden');
+  // Restore "required" on the file input so the browser validates it
+  inputFileEl.required = true;
+});
+
+tabMic.addEventListener('click', () => {
+  micMode = true;
+  tabMic.classList.add('tab-active');
+  tabMic.setAttribute('aria-selected', 'true');
+  tabUpload.classList.remove('tab-active');
+  tabUpload.setAttribute('aria-selected', 'false');
+  panelMic.classList.remove('hidden');
+  panelUpload.classList.add('hidden');
+  // Remove "required" – we validate manually in the submit handler
+  inputFileEl.required = false;
+});
 
 // ── File label helpers ─────────────────────────────────────────────────────
 function setupFileLabel(inputEl, labelEl) {
@@ -38,6 +80,7 @@ setupFileLabel(refFileEl,   labelRef);
 // Drag-over visual feedback
 ['drop-input', 'drop-ref'].forEach(id => {
   const zone = document.getElementById(id);
+  if (!zone) return;
   zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('dragover'); });
   zone.addEventListener('dragleave', ()  => zone.classList.remove('dragover'));
   zone.addEventListener('drop',      ()  => zone.classList.remove('dragover'));
@@ -65,9 +108,21 @@ form.addEventListener('submit', async (e) => {
   e.preventDefault();
   clearError();
   resultsSection.classList.add('hidden');
+
+  // Mic-mode validation
+  if (micMode && !recordedWavFile) {
+    showError('Please record audio from the microphone first.');
+    return;
+  }
+
   setLoading(true);
 
   const formData = new FormData(form);
+
+  // In mic mode, replace (or add) the input_audio field with the recorded WAV
+  if (micMode && recordedWavFile) {
+    formData.set('input_audio', recordedWavFile, recordedWavFile.name);
+  }
 
   try {
     const res  = await fetch('/api/analyze', { method: 'POST', body: formData });
@@ -294,3 +349,150 @@ function renderWaveChart(tdData) {
     },
   });
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// MICROPHONE RECORDING
+// Uses the Web Audio API to capture raw PCM, then encodes to 16-bit WAV so
+// that the server can process it without needing any extra codecs.
+// ══════════════════════════════════════════════════════════════════════════
+
+let mediaStream      = null;  // MediaStream from getUserMedia
+let audioContext     = null;  // AudioContext used for PCM capture
+let scriptProcessor  = null;  // ScriptProcessorNode
+let pcmChunks        = [];    // Float32Array samples collected during recording
+
+/**
+ * Encode an array of Float32 PCM samples as a 16-bit mono WAV Blob.
+ * @param {Float32Array[]} chunks  - raw PCM chunks (mono, same sample rate)
+ * @param {number}         sampleRate
+ * @returns {Blob}
+ */
+function encodeWav(chunks, sampleRate) {
+  // Flatten all chunks into one buffer
+  const totalLen = chunks.reduce((n, c) => n + c.length, 0);
+  const pcm = new Float32Array(totalLen);
+  let offset = 0;
+  for (const chunk of chunks) {
+    pcm.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  // Convert float32 → int16
+  const int16 = new Int16Array(pcm.length);
+  for (let i = 0; i < pcm.length; i++) {
+    const s = Math.max(-1, Math.min(1, pcm[i]));
+    int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+
+  // Build WAV file
+  const dataBytes   = int16.buffer.byteLength;
+  const buffer      = new ArrayBuffer(44 + dataBytes);
+  const view        = new DataView(buffer);
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const byteRate    = sampleRate * numChannels * (bitsPerSample / 8);
+  const blockAlign  = numChannels * (bitsPerSample / 8);
+
+  const writeStr = (off, str) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
+  writeStr(0,  'RIFF');
+  view.setUint32(4,  36 + dataBytes, true);
+  writeStr(8,  'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);           // chunk size
+  view.setUint16(20, 1,  true);           // PCM
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  writeStr(36, 'data');
+  view.setUint32(40, dataBytes, true);
+  new Int16Array(buffer, 44).set(int16);
+
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
+/**
+ * Stop and release the current media stream and audio context.
+ */
+function releaseAudioResources() {
+  if (scriptProcessor) {
+    scriptProcessor.disconnect();
+    scriptProcessor.onaudioprocess = null;
+    scriptProcessor = null;
+  }
+  if (audioContext) {
+    audioContext.close().catch((err) => { console.warn('AudioContext close error:', err); });
+    audioContext = null;
+  }
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(t => t.stop());
+    mediaStream = null;
+  }
+}
+
+// ── Start recording ────────────────────────────────────────────────────────
+btnRecordStart.addEventListener('click', async () => {
+  clearError();
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showError('Microphone access is not supported in this browser or context. Please use HTTPS.');
+    return;
+  }
+
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch (err) {
+    showError(`Microphone access denied: ${err.message}`);
+    return;
+  }
+
+  // Set up audio context
+  audioContext    = new (window.AudioContext || window.webkitAudioContext)();
+  const source    = audioContext.createMediaStreamSource(mediaStream);
+  // ScriptProcessorNode is deprecated but remains the only option without a
+  // separate AudioWorklet JS file. It has universal browser support for now.
+  const bufSize   = 4096;
+  scriptProcessor = audioContext.createScriptProcessor(bufSize, 1, 1);
+  pcmChunks       = [];
+
+  scriptProcessor.onaudioprocess = (evt) => {
+    // Copy the input buffer so it doesn't get recycled
+    const data = evt.inputBuffer.getChannelData(0);
+    pcmChunks.push(new Float32Array(data));
+  };
+
+  source.connect(scriptProcessor);
+  scriptProcessor.connect(audioContext.destination);
+
+  // Update UI
+  micDot.classList.add('recording');
+  micStatusText.textContent = 'Recording…';
+  btnRecordStart.classList.add('hidden');
+  btnRecordStop.classList.remove('hidden');
+  micPlayback.classList.add('hidden');
+  recordedWavFile = null;
+});
+
+// ── Stop recording ─────────────────────────────────────────────────────────
+btnRecordStop.addEventListener('click', () => {
+  if (!audioContext) return;
+
+  const sampleRate = audioContext.sampleRate;
+  releaseAudioResources();
+
+  // Encode to WAV
+  const wavBlob = encodeWav(pcmChunks, sampleRate);
+  recordedWavFile = new File([wavBlob], 'recording.wav', { type: 'audio/wav' });
+
+  // Playback preview
+  micAudio.src = URL.createObjectURL(wavBlob);
+  micPlayback.classList.remove('hidden');
+
+  // Update UI
+  micDot.classList.remove('recording');
+  micStatusText.textContent = 'Recording complete';
+  btnRecordStop.classList.add('hidden');
+  btnRecordStart.classList.remove('hidden');
+  btnRecordStart.textContent = '⏺ Record Again';
+});
